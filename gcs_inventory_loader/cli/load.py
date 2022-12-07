@@ -113,7 +113,7 @@ def bucket_lister(config: ConfigParser, gcs: Client, bucket: Bucket,
         projection = 'full'
     else:
         projection = 'noAcl'
-
+    datetime_start = datetime.now()
     # Use remaining configured workers, or at least 2, for this part
     workers = max(config.getint('RUNTIME', 'WORKERS') - 2, 2)
     size = int(config.getint('RUNTIME', 'WORK_QUEUE_SIZE') * .75)
@@ -122,7 +122,7 @@ def bucket_lister(config: ConfigParser, gcs: Client, bucket: Bucket,
         blobs = gcs.list_blobs(bucket, prefix=prefix, projection=projection)
         # LOG.info("%s blob records written for bucket", blobs.pages)
         for page in blobs.pages:
-            sub_executor.submit(page_outputter, config, bucket, page, stats)
+            sub_executor.submit(page_outputter, config, bucket, page, stats, datetime_start)
             sleep(0.02)  # small offset to avoid thundering herd
 
 def get_callback(
@@ -137,7 +137,7 @@ def get_callback(
     return callback
 
 def page_outputter(config: ConfigParser, bucket: Bucket, page: Page,
-                   stats: dict) -> None:
+                   stats: dict, datetime_start) -> None:
     """Write a page of blob listing to BigQuery.
 
     Arguments:
@@ -163,18 +163,19 @@ def page_outputter(config: ConfigParser, bucket: Bucket, page: Page,
                 } for k, v in blob_metadata["metadata"].items()]
             # LOG.info("Outputting blob record {}".format(blob_metadata))
             data = json.dumps(blob_metadata)
-            publish_future = publisher.publish(topic_path, data.encode("utf-8"))
+            # publish_future = publisher.publish(topic_path, data.encode("utf-8"))
             # Non-blocking. Publish failures are handled in the callback function.
-            publish_future.add_done_callback(get_callback(publish_future, data))
-            publish_futures.append(publish_future)
+            # publish_future.add_done_callback(get_callback(publish_future, data))
+            # publish_futures.append(publish_future)
             # publishMessage(blob_metadata)
         # Wait for all the publish futures to resolve before exiting.
-        futures.wait(publish_futures, return_when=futures.ALL_COMPLETED)
+        # futures.wait(publish_futures, return_when=futures.ALL_COMPLETED)
     except Exception as e:
         print(e)
-       
+    time_diff = (datetime.now()-datetime_start).total_seconds()
+    stats[bucket]+=blob_count
         # output.put(blob_metadata)
-    LOG.info("%s written for bucket.", blob_count)
+    LOG.info("%s written for bucket took: %s seconds", stats[bucket], str(time_diff))
     # try:
     #     output.flush()
     # except Exception:
