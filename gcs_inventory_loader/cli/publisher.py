@@ -15,7 +15,7 @@ def publishMessage(data):
         )
         print(future.result())
     except Exception as e:
-        print("I was here")
+        # print("I was here")
         print(e)
 
 
