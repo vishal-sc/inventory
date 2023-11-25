@@ -2,6 +2,7 @@
 
 Load your GCS bucket inventory into BigQuery (or stdout) fast with this tool.
 
+
 ## Introduction
 
 It can be very useful to have an inventory of your GCS objects and their metadata, particularly in a powerful database like BigQuery. The GCS listing API supports filtering by prefixes, but more complex queries can't be done via API. Using a database, you can find out lots of information about the data you have in GCS, such as finding very large objects, very old or stale objects, etc.
